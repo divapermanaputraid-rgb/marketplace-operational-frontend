@@ -116,29 +116,33 @@ export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrd
               </form>
             ) : (
               <div className="space-y-4">
-                <div className={`p-4 rounded-md ${result.status === 'success' || result.status === 'partial' ? 'bg-green-50' : 'bg-red-50'}`}>
+                <div className={`p-4 rounded-md ${result.status === 'success' || result.status === 'partial' ? 'bg-green-50' : result.status === 'expired' || result.status === 'not_configured' ? 'bg-amber-50' : 'bg-red-50'}`}>
                   <div className="flex">
                     <div className="flex-shrink-0">
                       {result.status === 'success' ? (
                         <CheckCircle2 className="h-5 w-5 text-green-400" />
                       ) : result.status === 'partial' ? (
                         <Info className="h-5 w-5 text-yellow-400" />
+                      ) : result.status === 'expired' || result.status === 'not_configured' ? (
+                        <AlertCircle className="h-5 w-5 text-amber-400" />
                       ) : (
                         <X className="h-5 w-5 text-red-400" />
                       )}
                     </div>
                     <div className="ml-3">
-                      <h3 className={`text-sm font-medium ${result.status === 'success' ? 'text-green-800' : result.status === 'partial' ? 'text-yellow-800' : 'text-red-800'}`}>
+                      <h3 className={`text-sm font-medium ${result.status === 'success' ? 'text-green-800' : result.status === 'partial' ? 'text-yellow-800' : result.status === 'expired' || result.status === 'not_configured' ? 'text-amber-800' : 'text-red-800'}`}>
                         {result.message}
                       </h3>
-                      <div className="mt-2 text-sm text-gray-700">
-                        <ul className="list-disc pl-5 space-y-1">
-                          <li>Processed: {result.records_processed}</li>
-                          <li>Created: {result.records_created}</li>
-                          <li>Updated: {result.records_updated}</li>
-                          <li>Failed: {result.records_failed}</li>
-                        </ul>
-                      </div>
+                      {(result.status === 'success' || result.status === 'partial' || result.records_processed > 0) && (
+                        <div className="mt-2 text-sm text-gray-700">
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Processed: {result.records_processed}</li>
+                            <li>Created: {result.records_created}</li>
+                            <li>Updated: {result.records_updated}</li>
+                            <li>Failed: {result.records_failed}</li>
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -152,7 +156,7 @@ export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrd
                       <div className="ml-3">
                         <p className="text-sm text-yellow-700">
                           <strong>{result.unmapped_items_count} items</strong> are not mapped to internal products yet. 
-                          These orders were saved but linked to internal products.
+                          These orders were saved but not linked to internal products.
                         </p>
                       </div>
                     </div>
@@ -160,9 +164,9 @@ export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrd
                 )}
 
                 {result.errors && result.errors.length > 0 && (
-                  <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto border border-red-100 p-2 rounded">
-                    <p className="font-semibold mb-1">Errors:</p>
-                    <ul className="list-disc pl-4">
+                  <div className="mt-2 text-xs text-red-600 max-h-32 overflow-y-auto border border-red-100 p-2 rounded font-mono">
+                    <p className="font-semibold mb-1">Errors Detail:</p>
+                    <ul className="list-disc pl-4 space-y-0.5">
                       {result.errors.map((err: string, i: number) => (
                         <li key={i}>{err}</li>
                       ))}

@@ -47,7 +47,8 @@ export interface PullOrdersRequest {
 }
 
 export interface PullOrdersResult {
-  status: 'success' | 'partial' | 'failed' | 'not_implemented' | 'unsupported';
+  status: 'success' | 'partial' | 'failed' | 'not_implemented' | 'unsupported' | 'expired' | 'not_configured';
+
   message: string;
   records_processed: number;
   records_created: number;

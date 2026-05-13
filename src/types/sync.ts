@@ -3,8 +3,9 @@ import type { Store } from './store';
 export type SyncMarketplace = 'shopee' | 'tokopedia_shop' | 'tiktok_shop' | 'all';
 export type SyncType = 'orders' | 'products' | 'inventory' | 'stock' | 'all';
 export type SyncDirection = 'pull' | 'push' | 'bidirectional' | 'internal';
-export type SyncJobStatus = 'idle' | 'running' | 'success' | 'failed' | 'skipped' | 'not_configured' | 'disabled';
-export type SyncLogStatus = 'started' | 'success' | 'failed' | 'skipped' | 'not_configured';
+export type SyncJobStatus = 'idle' | 'running' | 'success' | 'failed' | 'skipped' | 'not_configured' | 'disabled' | 'expired' | 'not_implemented';
+export type SyncLogStatus = 'started' | 'success' | 'failed' | 'skipped' | 'not_configured' | 'expired' | 'not_implemented';
+
 
 export interface SyncJob {
   id: string;

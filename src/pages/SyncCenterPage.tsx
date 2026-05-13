@@ -56,7 +56,8 @@ const STATUS_COLORS: Record<string, string> = {
   running: 'bg-blue-100 text-blue-800',
   success: 'bg-green-100 text-green-800',
   failed: 'bg-red-100 text-red-800',
-  skipped: 'bg-yellow-100 text-yellow-800',
+  expired: 'bg-red-100 text-red-800',
+  not_implemented: 'bg-purple-100 text-purple-800',
   not_configured: 'bg-orange-100 text-orange-800',
   disabled: 'bg-gray-200 text-gray-500',
   started: 'bg-blue-100 text-blue-800',
@@ -315,26 +316,56 @@ function JobsView() {
 
 function LogsView() {
   const [marketplaceFilter, setMarketplaceFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   
   const { data: logs, isLoading, error } = useQuery({
-    queryKey: ['sync-logs', marketplaceFilter],
-    queryFn: () => syncApi.listLogs({ marketplace: marketplaceFilter }),
+    queryKey: ['sync-logs', marketplaceFilter, typeFilter, statusFilter],
+    queryFn: () => syncApi.listLogs({ 
+      marketplace: marketplaceFilter,
+      sync_type: typeFilter,
+      status: statusFilter
+    }),
   });
 
   return (
     <Card>
-      <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+      <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h3 className="text-lg font-medium text-gray-900">Recent Sync Executions</h3>
-        <select
-          value={marketplaceFilter}
-          onChange={(e) => setMarketplaceFilter(e.target.value)}
-          className="form-select block w-48 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-        >
-          <option value="">All Marketplaces</option>
-          {MARKETPLACES.map(m => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={marketplaceFilter}
+            onChange={(e) => setMarketplaceFilter(e.target.value)}
+            className="form-select block w-40 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          >
+            <option value="">All Marketplaces</option>
+            {MARKETPLACES.map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="form-select block w-40 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          >
+            <option value="">All Types</option>
+            {SYNC_TYPES.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="form-select block w-40 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          >
+            <option value="">All Statuses</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+            <option value="partial">Partial</option>
+            <option value="expired">Expired</option>
+            <option value="not_configured">Not Configured</option>
+          </select>
+        </div>
       </div>
 
       {isLoading ? (
@@ -349,8 +380,9 @@ function LogsView() {
             <thead className="bg-white">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Job</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Job / Context</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Records (P/C/U/F)</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Message</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
               </tr>
@@ -368,10 +400,20 @@ function LogsView() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium", STATUS_COLORS[log.status] || STATUS_COLORS.idle)}>
                       {log.status === 'success' && <CheckCircle2 className="mr-1 h-3 w-3" />}
-                      {log.status === 'failed' && <XCircle className="mr-1 h-3 w-3" />}
-                      {log.status === 'not_configured' && <AlertTriangle className="mr-1 h-3 w-3" />}
+                      {(log.status === 'failed' || log.status === 'expired') && <XCircle className="mr-1 h-3 w-3" />}
+                      {(log.status === 'not_configured' || log.status === 'not_implemented') && <AlertTriangle className="mr-1 h-3 w-3" />}
                       {log.status.replace('_', ' ').toUpperCase()}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 font-mono">
+                      {log.records_processed} / <span className="text-green-600">{log.records_created}</span> / <span className="text-blue-600">{log.records_updated}</span> / <span className="text-red-600">{log.records_failed}</span>
+                    </div>
+                    {log.raw_summary && (
+                      <div className="text-[10px] text-gray-400 mt-1 italic">
+                        {log.records_failed > 0 && "Failures detected"}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate" title={log.message || log.error_message || ''}>
                     {log.message || log.error_message || '-'}

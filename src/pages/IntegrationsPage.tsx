@@ -98,6 +98,10 @@ export function IntegrationsPage() {
       case 'failed':
       case 'expired':
         return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><XCircle className="w-3 h-3 mr-1" /> {status === 'expired' ? 'Expired' : 'Failed'}</span>;
+      case 'not_implemented':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Not Implemented</span>;
+      case 'missing_credentials':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Missing Backend Credentials</span>;
       case 'disconnected':
       case 'not_configured':
       default:
