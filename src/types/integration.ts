@@ -38,3 +38,16 @@ export interface IntegrationTestResponse {
   success: boolean;
   message: string;
 }
+
+export interface PullOrdersResponse {
+  status: 'success' | 'partial' | 'failed' | 'not_implemented' | 'unsupported';
+  message: string;
+  records_processed: number;
+  records_created: number;
+  records_updated: number;
+  records_failed: number;
+  unmapped_items_count: number;
+  sync_log_id?: string;
+  errors?: string[];
+}
+

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plug, AlertCircle, CheckCircle2, XCircle, RefreshCw, Clock } from 'lucide-react';
+import { Plug, AlertCircle, CheckCircle2, XCircle, RefreshCw, Clock, Download } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { Card } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PullOrdersModal } from '@/components/integrations/PullOrdersModal';
 import type { StoreIntegration } from '@/types/integration';
 
 function getErrorMessage(error: unknown): string {
@@ -19,6 +20,10 @@ export function IntegrationsPage() {
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  
+  // Pull Orders Modal state
+  const [pullModalOpen, setPullModalOpen] = useState(false);
+  const [selectedStore, setSelectedStore] = useState<{id: string, name: string} | null>(null);
 
   const { data: integrations, isLoading, error } = useQuery({
     queryKey: ['integrations'],
@@ -100,6 +105,11 @@ export function IntegrationsPage() {
     }
   };
 
+  const handlePullOrders = (storeId: string, storeName: string) => {
+    setSelectedStore({ id: storeId, name: storeName });
+    setPullModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -160,6 +170,15 @@ export function IntegrationsPage() {
               </div>
               
               <div className="flex items-center gap-3">
+                {item.integration?.connection_status === 'connected' && item.marketplace === 'shopee' && (
+                  <button
+                    onClick={() => handlePullOrders(item.store_id, item.store_name)}
+                    className="px-3 py-1.5 text-sm font-medium text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-md flex items-center gap-1"
+                  >
+                    <Download className="w-4 h-4" />
+                    Pull Orders
+                  </button>
+                )}
                 <button
                   onClick={() => initiateMutation.mutate(item.store_id)}
                   disabled={initiateMutation.isPending}
@@ -211,6 +230,20 @@ export function IntegrationsPage() {
           )}
         </div>
       </div>
+
+      {selectedStore && (
+        <PullOrdersModal
+          storeId={selectedStore.id}
+          storeName={selectedStore.name}
+          isOpen={pullModalOpen}
+          onClose={() => {
+            setPullModalOpen(false);
+            setSelectedStore(null);
+            queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          }}
+        />
+      )}
     </div>
   );
 }
+

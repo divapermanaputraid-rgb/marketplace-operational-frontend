@@ -4,7 +4,8 @@ import type {
   SupportedMarketplace, 
   CredentialResponse,
   IntegrationInitiateResponse,
-  IntegrationTestResponse
+  IntegrationTestResponse,
+  PullOrdersResponse
 } from '@/types/integration';
 
 export const integrationsApi = {
@@ -36,5 +37,14 @@ export const integrationsApi = {
     return fetchApi<{ message: string }>(`/stores/${storeId}/integration/disconnect`, {
       method: 'POST',
     });
+  },
+
+  pullOrders: (storeId: string, params: { time_from: number; time_to: number; order_status?: string; page_size?: number }) => {
+    return fetchApi<PullOrdersResponse>(`/stores/${storeId}/integration/orders/pull`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
   }
 };
+
+
