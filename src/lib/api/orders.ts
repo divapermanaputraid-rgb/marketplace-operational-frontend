@@ -5,6 +5,7 @@ import type {
   UpdateOrderRequest,
   OrderFilters 
 } from '@/types/order';
+import type { InventoryReservationResult } from '@/types/inventory';
 
 export const ordersApi = {
   list: (params?: OrderFilters) => {
@@ -32,4 +33,11 @@ export const ordersApi = {
     
   delete: (id: string) => 
     fetchApi<null>(`/api/orders/${id}`, { method: 'DELETE' }),
+
+  reserveStock: (id: string) =>
+    fetchApi<InventoryReservationResult>(`/api/orders/${id}/reserve-stock`, { method: 'POST' }),
+
+  releaseReservation: (id: string) =>
+    fetchApi<InventoryReservationResult>(`/api/orders/${id}/release-reservation`, { method: 'POST' }),
 };
+

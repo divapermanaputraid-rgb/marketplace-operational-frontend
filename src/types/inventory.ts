@@ -75,7 +75,19 @@ export interface UpdateInventoryMetadataRequest {
   notes?: string;
 }
 
+export interface InventoryReservationResult {
+  status: string; // success, insufficient_stock, partially_mapped, error
+  message: string;
+  records_processed: number;
+  records_reserved: number;
+  records_released: number;
+  records_confirmed: number;
+  records_skipped: number;
+  errors?: string[];
+}
+
 export interface InventoryFilters {
+
   product_id?: string;
   product_variant_id?: string;
   search?: string;

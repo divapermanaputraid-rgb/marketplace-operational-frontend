@@ -10,6 +10,8 @@ import type {
   OrderStatus,
   PaymentStatus
 } from '@/types/order';
+import type { InventoryReservationResult } from '@/types/inventory';
+
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -723,17 +725,67 @@ function EditOrderModal({ order, onClose }: { order: Order; onClose: () => void 
 }
 
 function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [actionResult, setActionResult] = useState<InventoryReservationResult | null>(null);
+
   const { data: order, isLoading } = useQuery({
     queryKey: ['orders', orderId],
     queryFn: () => ordersApi.get(orderId)
   });
+
+  const reserveMutation = useMutation({
+    mutationFn: () => ordersApi.reserveStock(orderId),
+    onSuccess: (result) => {
+      setActionResult(result);
+      queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : 'Failed to reserve stock';
+      setActionResult({
+        status: 'error',
+        message: message,
+        records_processed: 0,
+        records_reserved: 0,
+        records_released: 0,
+        records_confirmed: 0,
+        records_skipped: 0,
+        errors: [message]
+      });
+    }
+  });
+
+  const releaseMutation = useMutation({
+    mutationFn: () => ordersApi.releaseReservation(orderId),
+    onSuccess: (result) => {
+      setActionResult(result);
+      queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : 'Failed to release reservation';
+      setActionResult({
+        status: 'error',
+        message: message,
+        records_processed: 0,
+        records_reserved: 0,
+        records_released: 0,
+        records_confirmed: 0,
+        records_skipped: 0,
+        errors: [message]
+      });
+    }
+  });
+
+
+  const isActionLoading = reserveMutation.isPending || releaseMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-500 bg-opacity-75">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">Order Details</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">&times;</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-500 text-2xl">&times;</button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-6">
@@ -743,6 +795,35 @@ function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => 
             <div className="text-center text-red-500">Order not found</div>
           ) : (
             <div className="space-y-6">
+              {/* Action Result Alerts */}
+              {actionResult && (
+                <div className={cn(
+                  "p-4 rounded-md border mb-4",
+                  actionResult.status === 'success' ? "bg-green-50 border-green-200 text-green-800" :
+                  actionResult.status === 'insufficient_stock' ? "bg-red-50 border-red-200 text-red-800" :
+                  actionResult.status === 'partially_mapped' ? "bg-yellow-50 border-yellow-200 text-yellow-800" :
+                  "bg-red-50 border-red-200 text-red-800"
+                )}>
+                  <div className="flex flex-col gap-1">
+                    <p className="font-bold text-sm uppercase tracking-tight">{actionResult.message}</p>
+                    <div className="text-xs space-x-3">
+                      <span>Processed: {actionResult.records_processed}</span>
+                      {actionResult.records_reserved > 0 && <span className="font-medium">Reserved: {actionResult.records_reserved}</span>}
+                      {actionResult.records_released > 0 && <span className="font-medium">Released: {actionResult.records_released}</span>}
+                      {actionResult.records_skipped > 0 && <span className="text-gray-600 italic">Skipped: {actionResult.records_skipped}</span>}
+                    </div>
+                    {actionResult.records_skipped > 0 && actionResult.status === 'success' && (
+                      <p className="text-[10px] mt-1 text-blue-600">Note: Some items were skipped (either already processed or not mapped to inventory).</p>
+                    )}
+                    {actionResult.errors && actionResult.errors.length > 0 && (
+                      <ul className="mt-2 list-disc list-inside text-[11px] text-red-600">
+                        {actionResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">{order.order_number}</h2>
@@ -751,11 +832,17 @@ function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => 
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {order.order_status}
+                  <span className={cn(
+                    "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                    ORDER_STATUSES.find(s => s.value === order.order_status)?.color || 'bg-gray-100 text-gray-800'
+                  )}>
+                    {ORDER_STATUSES.find(s => s.value === order.order_status)?.label || order.order_status}
                   </span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {order.payment_status}
+                  <span className={cn(
+                    "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                    PAYMENT_STATUSES.find(s => s.value === order.payment_status)?.color || 'bg-gray-100 text-gray-800'
+                  )}>
+                    {PAYMENT_STATUSES.find(s => s.value === order.payment_status)?.label || order.payment_status}
                   </span>
                 </div>
               </div>
@@ -774,7 +861,32 @@ function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => 
                   <div className="text-sm space-y-1">
                     <div className="flex justify-between"><span className="text-gray-500">Date:</span> <span>{order.ordered_at ? new Date(order.ordered_at).toLocaleString() : 'N/A'}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500">External ID:</span> <span>{order.external_order_id || 'N/A'}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">Inventory:</span> <span className="text-orange-600 italic text-xs">Not reserved yet</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Inventory Actions Area */}
+              <div className="border border-orange-200 bg-orange-50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-orange-900">Inventory Controls</h4>
+                    <p className="text-xs text-orange-700 mt-0.5">Manually manage stock reservations for this order.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => reserveMutation.mutate()}
+                      disabled={isActionLoading}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
+                    >
+                      {reserveMutation.isPending ? 'Reserving...' : 'Reserve Stock'}
+                    </button>
+                    <button
+                      onClick={() => releaseMutation.mutate()}
+                      disabled={isActionLoading}
+                      className="inline-flex items-center px-3 py-1.5 border border-orange-300 text-xs font-medium rounded shadow-sm text-orange-700 bg-white hover:bg-orange-50 disabled:opacity-50"
+                    >
+                      {releaseMutation.isPending ? 'Releasing...' : 'Release Reservation'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -795,7 +907,14 @@ function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => 
                       <tr key={item.id}>
                         <td className="py-3">
                           <div className="text-sm font-medium text-gray-900">{item.product_name}</div>
-                          {item.sku && <div className="text-xs text-gray-500">{item.sku}</div>}
+                          <div className="flex items-center mt-0.5 space-x-2">
+                            {item.sku && <span className="text-[10px] font-mono bg-gray-100 px-1 rounded text-gray-500">{item.sku}</span>}
+                            {item.product_id ? (
+                              <span className="text-[10px] text-green-600 font-medium">Mapped</span>
+                            ) : (
+                              <span className="text-[10px] text-red-500 italic">Unmapped</span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 text-right text-sm text-gray-900">{item.quantity}</td>
                         <td className="py-3 text-right text-sm text-gray-500">{item.unit_price.toLocaleString()}</td>
@@ -850,3 +969,4 @@ function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => 
     </div>
   );
 }
+
