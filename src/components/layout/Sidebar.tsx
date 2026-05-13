@@ -8,7 +8,8 @@ import {
   BarChart2,
   Settings,
   ArrowRightLeft,
-  Link2
+  Link2,
+  Plug
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -20,6 +21,7 @@ const navItems = [
   { name: 'Inventory', href: '/inventory', icon: ArrowRightLeft },
   { name: 'Orders', href: '/orders', icon: ShoppingCart },
   { name: 'Sync Center', href: '/sync', icon: RefreshCw },
+  { name: 'Integrations', href: '/integrations', icon: Plug },
   { name: 'Reports', href: '/reports', icon: BarChart2 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

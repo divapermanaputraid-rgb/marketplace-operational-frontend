@@ -17,7 +17,8 @@ import { InventoryPage } from '@/pages/InventoryPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { SyncCenterPage } from '@/pages/SyncCenterPage';
 
-// eslint-disable-next-line react-refresh/only-export-components
+import { IntegrationsPage } from '@/pages/IntegrationsPage';
+
 const PlaceholderPage = ({ title, icon: Icon, sprint }: { title: string, icon: React.ElementType, sprint: string }) => {
   return (
     <div className="space-y-6">
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
       { path: 'inventory', element: <InventoryPage /> },
       { path: 'orders', element: <OrdersPage /> },
       { path: 'sync', element: <SyncCenterPage /> },
+      { path: 'integrations', element: <IntegrationsPage /> },
       { path: 'reports', element: <PlaceholderPage title="Reports" icon={BarChart2} sprint="5" /> },
       { path: 'settings', element: <SettingsPage /> },
     ]
