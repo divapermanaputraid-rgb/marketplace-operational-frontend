@@ -68,3 +68,4 @@ This project includes a `vercel.json` file configured to rewrite all routes to `
 6. Set the Environment Variable `VITE_API_BASE_URL` pointing to your deployed Render backend (e.g., `https://your-backend-app.onrender.com`). *Do not append `/api` as the client handles this.*
 7. Deploy!
 
+.
