@@ -5,7 +5,8 @@ import type {
   CredentialResponse,
   IntegrationInitiateResponse,
   IntegrationTestResponse,
-  PullOrdersResponse
+  PullOrdersRequest,
+  PullOrdersResult
 } from '@/types/integration';
 
 export const integrationsApi = {
@@ -39,12 +40,13 @@ export const integrationsApi = {
     });
   },
 
-  pullOrders: (storeId: string, params: { time_from: number; time_to: number; order_status?: string; page_size?: number }) => {
-    return fetchApi<PullOrdersResponse>(`/stores/${storeId}/integration/orders/pull`, {
+  pullShopeeOrders: (storeId: string, params: PullOrdersRequest) => {
+    return fetchApi<PullOrdersResult>(`/stores/${storeId}/integration/orders/pull`, {
       method: 'POST',
       body: JSON.stringify(params),
     });
   }
 };
+
 
 

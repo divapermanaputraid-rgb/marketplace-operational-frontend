@@ -1,4 +1,4 @@
-import type { StoreIntegration, SupportedMarketplace, CredentialResponse, IntegrationInitiateResponse, IntegrationTestResponse, PullOrdersResponse } from '@/types/integration';
+import type { StoreIntegration, SupportedMarketplace, CredentialResponse, IntegrationInitiateResponse, IntegrationTestResponse, PullOrdersRequest, PullOrdersResult } from '@/types/integration';
 export declare const integrationsApi: {
     listIntegrations: () => Promise<StoreIntegration[]>;
     getStoreIntegration: (storeId: string) => Promise<CredentialResponse>;
@@ -8,10 +8,5 @@ export declare const integrationsApi: {
     disconnectStoreIntegration: (storeId: string) => Promise<{
         message: string;
     }>;
-    pullOrders: (storeId: string, params: {
-        time_from: number;
-        time_to: number;
-        order_status?: string;
-        page_size?: number;
-    }) => Promise<PullOrdersResponse>;
+    pullShopeeOrders: (storeId: string, params: PullOrdersRequest) => Promise<PullOrdersResult>;
 };

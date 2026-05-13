@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
-import type { PullOrdersResponse } from '@/types/integration';
+import type { PullOrdersResult } from '@/types/integration';
 
 interface PullOrdersModalProps {
   storeId: string;
@@ -13,7 +13,7 @@ interface PullOrdersModalProps {
 export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrdersModalProps) {
   const [days, setDays] = useState(7);
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<PullOrdersResponse | null>(null);
+  const [result, setResult] = useState<PullOrdersResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -28,7 +28,7 @@ export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrd
       const now = Math.floor(Date.now() / 1000);
       const timeFrom = now - (days * 24 * 60 * 60);
       
-      const response = await integrationsApi.pullOrders(storeId, {
+      const response = await integrationsApi.pullShopeeOrders(storeId, {
         time_from: timeFrom,
         time_to: now,
         page_size: 20
@@ -41,6 +41,7 @@ export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrd
       setIsLoading(false);
     }
   };
+
 
 
   return (

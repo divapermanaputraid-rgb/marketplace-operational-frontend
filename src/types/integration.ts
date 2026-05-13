@@ -39,7 +39,14 @@ export interface IntegrationTestResponse {
   message: string;
 }
 
-export interface PullOrdersResponse {
+export interface PullOrdersRequest {
+  time_from: number;
+  time_to: number;
+  order_status?: string;
+  page_size?: number;
+}
+
+export interface PullOrdersResult {
   status: 'success' | 'partial' | 'failed' | 'not_implemented' | 'unsupported';
   message: string;
   records_processed: number;
@@ -50,4 +57,5 @@ export interface PullOrdersResponse {
   sync_log_id?: string;
   errors?: string[];
 }
+
 
