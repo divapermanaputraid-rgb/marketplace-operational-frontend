@@ -7,6 +7,14 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import type { StoreIntegration } from '@/types/integration';
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error);
+}
+
 export function IntegrationsPage() {
   const queryClient = useQueryClient();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -32,9 +40,9 @@ export function IntegrationsPage() {
         setSuccessMsg(data.message || 'Marketplace OAuth is not fully configured yet.');
       }
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       setSuccessMsg(null);
-      setErrorMsg(err.message || 'Failed to initiate setup');
+      setErrorMsg(getErrorMessage(err) || 'Failed to initiate setup');
     }
   });
 
@@ -45,9 +53,9 @@ export function IntegrationsPage() {
       setSuccessMsg(data.message || 'Test connection completed.');
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       setSuccessMsg(null);
-      setErrorMsg(err.message || 'Test connection failed');
+      setErrorMsg(getErrorMessage(err) || 'Test connection failed');
     }
   });
 
@@ -58,9 +66,9 @@ export function IntegrationsPage() {
       setSuccessMsg(data.message || 'Store disconnected.');
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       setSuccessMsg(null);
-      setErrorMsg(err.message || 'Disconnect failed');
+      setErrorMsg(getErrorMessage(err) || 'Disconnect failed');
     }
   });
 
