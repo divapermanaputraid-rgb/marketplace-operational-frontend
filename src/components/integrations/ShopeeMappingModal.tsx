@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Search, Link2, AlertCircle, CheckCircle2, Loader2, Package } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { X, Search, Link2, AlertCircle, CheckCircle2, Loader2, Package, ChevronDown } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { productsApi } from '@/lib/api/products';
 import type { ShopeeMappingCandidate, CreateShopeeMappingRequest } from '@/types/integration';
@@ -24,11 +24,38 @@ export function ShopeeMappingModal({ storeId, storeName, isOpen, onClose }: Shop
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
 
-  const { data: candidatesData, isLoading: isLoadingCandidates, error: candidatesError, refetch: refetchCandidates } = useQuery({
+  const { 
+    data: candidatesData, 
+    isLoading: isLoadingCandidates, 
+    error: candidatesError, 
+    refetch: refetchCandidates,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteQuery({
     queryKey: ['shopeeMappingCandidates', storeId],
-    queryFn: () => integrationsApi.getShopeeMappingCandidates(storeId, { page_size: 50 }),
+    queryFn: ({ pageParam = 0 }) => integrationsApi.getShopeeMappingCandidates(storeId, { offset: pageParam as number, page_size: 20 }),
+    getNextPageParam: (lastPage) => lastPage.has_next_page ? lastPage.next_offset : undefined,
+    initialPageParam: 0,
     enabled: isOpen,
   });
+
+  const allCandidates = useMemo(() => {
+    return candidatesData?.pages.flatMap(page => page.candidates) || [];
+  }, [candidatesData]);
+
+  const stats = useMemo(() => {
+    if (!candidatesData?.pages[0]) return null;
+    let total = 0;
+    let mapped = 0;
+    let unmapped = 0;
+    candidatesData.pages.forEach(page => {
+      total += page.records_processed;
+      mapped += page.mapped_count;
+      unmapped += page.unmapped_count;
+    });
+    return { total, mapped, unmapped };
+  }, [candidatesData]);
 
   const { data: searchProducts, isLoading: isSearchingProducts } = useQuery({
     queryKey: ['internalProductsSearch', internalProductSearch],
@@ -49,7 +76,7 @@ export function ShopeeMappingModal({ storeId, storeName, isOpen, onClose }: Shop
 
   if (!isOpen) return null;
 
-  const filteredCandidates = candidatesData?.candidates.filter(c => {
+  const filteredCandidates = allCandidates.filter(c => {
     const matchesFilter = 
       candidateFilter === 'all' || 
       (candidateFilter === 'mapped' && c.mapping_status === 'mapped') ||
@@ -60,7 +87,7 @@ export function ShopeeMappingModal({ storeId, storeName, isOpen, onClose }: Shop
       c.sku.toLowerCase().includes(candidateSearch.toLowerCase());
     
     return matchesFilter && matchesSearch;
-  }) || [];
+  });
 
   const handleMapAction = (candidate: ShopeeMappingCandidate) => {
     setMappingCandidate(candidate);
@@ -115,19 +142,19 @@ export function ShopeeMappingModal({ storeId, storeName, isOpen, onClose }: Shop
             ) : null}
 
             {/* Stats Bar */}
-            {!isLoadingCandidates && candidatesData && (
+            {!isLoadingCandidates && stats && (
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                  <p className="text-xs text-gray-500 uppercase font-semibold">Total Listings</p>
-                  <p className="text-lg font-bold">{candidatesData.records_processed}</p>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Loaded Listings</p>
+                  <p className="text-lg font-bold">{stats.total}</p>
                 </div>
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                   <p className="text-xs text-green-600 uppercase font-semibold">Mapped</p>
-                  <p className="text-lg font-bold text-green-700">{candidatesData.mapped_count}</p>
+                  <p className="text-lg font-bold text-green-700">{stats.mapped}</p>
                 </div>
                 <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100">
                   <p className="text-xs text-yellow-600 uppercase font-semibold">Unmapped</p>
-                  <p className="text-lg font-bold text-yellow-700">{candidatesData.unmapped_count}</p>
+                  <p className="text-lg font-bold text-yellow-700">{stats.unmapped}</p>
                 </div>
               </div>
             )}
@@ -264,6 +291,28 @@ export function ShopeeMappingModal({ storeId, storeName, isOpen, onClose }: Shop
                     ))}
                   </tbody>
                 </table>
+              )}
+
+              {hasNextPage && (
+                <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-center">
+                  <button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                  >
+                    {isFetchingNextPage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading more...
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4" />
+                        Load More Listings
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           </div>

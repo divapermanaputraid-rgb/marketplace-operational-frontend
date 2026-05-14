@@ -93,6 +93,8 @@ export interface MappingCandidatesResult {
   mapped_count: number;
   unmapped_count: number;
   candidates: ShopeeMappingCandidate[];
+  has_next_page?: boolean;
+  next_offset?: number;
   sync_log_id?: string;
 }
 
