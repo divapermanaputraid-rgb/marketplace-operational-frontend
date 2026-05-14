@@ -15,23 +15,33 @@ export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrd
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<PullOrdersResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pullParams, setPullParams] = useState<{ timeFrom: number; timeTo: number } | null>(null);
 
   if (!isOpen) return null;
 
-  const handlePull = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePull = async (e?: React.FormEvent, cursor?: string) => {
+    if (e) e.preventDefault();
     setIsLoading(true);
     setError(null);
-    setResult(null);
 
     try {
-      const now = Math.floor(Date.now() / 1000);
-      const timeFrom = now - (days * 24 * 60 * 60);
+      let timeFrom: number;
+      let timeTo: number;
+
+      if (cursor && pullParams) {
+        timeFrom = pullParams.timeFrom;
+        timeTo = pullParams.timeTo;
+      } else {
+        timeTo = Math.floor(Date.now() / 1000);
+        timeFrom = timeTo - (days * 24 * 60 * 60);
+        setPullParams({ timeFrom, timeTo });
+      }
       
       const response = await integrationsApi.pullShopeeOrders(storeId, {
         time_from: timeFrom,
-        time_to: now,
-        page_size: 20
+        time_to: timeTo,
+        page_size: 20,
+        cursor: cursor
       });
 
       setResult(response);
@@ -40,6 +50,12 @@ export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrd
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    setResult(null);
+    setError(null);
+    setPullParams(null);
   };
 
 
@@ -174,14 +190,33 @@ export function PullOrdersModal({ storeId, storeName, isOpen, onClose }: PullOrd
                   </div>
                 )}
 
-                <div className="mt-5 sm:mt-6">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="w-full px-4 py-2 bg-blue-600 border border-transparent text-sm font-medium text-white hover:bg-blue-700 rounded-md focus:outline-none"
-                  >
-                    Close
-                  </button>
+                <div className="mt-5 sm:mt-6 flex flex-col gap-3">
+                  {result.has_next_page && (
+                    <button
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handlePull(undefined, result.next_cursor)}
+                      className="w-full px-4 py-2 bg-green-600 border border-transparent text-sm font-medium text-white hover:bg-green-700 rounded-md focus:outline-none disabled:opacity-50"
+                    >
+                      {isLoading ? 'Processing...' : 'Pull Next Page'}
+                    </button>
+                  )}
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="flex-1 px-4 py-2 bg-white border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md focus:outline-none"
+                    >
+                      New Pull
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="flex-1 px-4 py-2 bg-blue-600 border border-transparent text-sm font-medium text-white hover:bg-blue-700 rounded-md focus:outline-none"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

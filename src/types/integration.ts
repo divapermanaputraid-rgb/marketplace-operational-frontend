@@ -45,17 +45,19 @@ export interface PullOrdersRequest {
   time_to: number;
   order_status?: string;
   page_size?: number;
+  cursor?: string;
 }
 
 export interface PullOrdersResult {
-  status: 'success' | 'partial' | 'failed' | 'not_implemented' | 'unsupported' | 'expired' | 'not_configured';
-
+  status: 'success' | 'partial' | 'failed' | 'not_implemented' | 'unsupported' | 'expired' | 'not_configured' | 'validation_failed';
   message: string;
   records_processed: number;
   records_created: number;
   records_updated: number;
   records_failed: number;
   unmapped_items_count: number;
+  has_next_page?: boolean;
+  next_cursor?: string;
   sync_log_id?: string;
   errors?: string[];
 }
