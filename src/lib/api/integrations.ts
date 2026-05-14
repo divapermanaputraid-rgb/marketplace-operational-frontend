@@ -6,7 +6,11 @@ import type {
   IntegrationInitiateResponse,
   IntegrationTestResponse,
   PullOrdersRequest,
-  PullOrdersResult
+  PullOrdersResult,
+  MappingCandidatesRequest,
+  MappingCandidatesResult,
+  CreateShopeeMappingRequest,
+  CreateShopeeMappingResult
 } from '@/types/integration';
 
 export const integrationsApi = {
@@ -45,8 +49,19 @@ export const integrationsApi = {
       method: 'POST',
       body: JSON.stringify(params),
     });
+  },
+
+  getShopeeMappingCandidates: (storeId: string, params: MappingCandidatesRequest) => {
+    return fetchApi<MappingCandidatesResult>(`/api/stores/${storeId}/integration/products/mapping-candidates`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  createShopeeProductMapping: (storeId: string, payload: CreateShopeeMappingRequest) => {
+    return fetchApi<CreateShopeeMappingResult>(`/api/stores/${storeId}/integration/products/mappings`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 };
-
-
-

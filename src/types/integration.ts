@@ -59,4 +59,57 @@ export interface PullOrdersResult {
   errors?: string[];
 }
 
+export interface ShopeeMappingCandidate {
+  external_product_id: string;
+  external_variant_id: string | null;
+  marketplace: string;
+  store_id: string;
+  title: string;
+  sku: string;
+  variant_name?: string;
+  price: number;
+  stock: number;
+  image_url?: string;
+  mapping_status: 'mapped' | 'unmapped';
+  existing_product_mapping_id?: string | null;
+  internal_product_id?: string | null;
+  internal_product_name?: string | null;
+  internal_variant_id?: string | null;
+}
 
+export interface MappingCandidatesRequest {
+  page_size?: number;
+  item_status?: string;
+  offset?: number;
+}
+
+export interface MappingCandidatesResult {
+  status: string;
+  message: string;
+  records_processed: number;
+  mapped_count: number;
+  unmapped_count: number;
+  candidates: ShopeeMappingCandidate[];
+  sync_log_id?: string;
+}
+
+export interface CreateShopeeMappingRequest {
+  external_product_id: string;
+  external_variant_id?: string | null;
+  internal_product_id: string;
+  internal_variant_id?: string | null;
+  external_sku?: string;
+  external_name?: string;
+}
+
+export interface CreateShopeeMappingResult {
+  id: string;
+  product_id: string;
+  product_variant_id?: string | null;
+  store_id: string;
+  marketplace: string;
+  external_product_id: string;
+  external_variant_id?: string | null;
+  external_sku?: string;
+  listing_name?: string;
+}

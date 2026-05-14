@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plug, AlertCircle, CheckCircle2, XCircle, RefreshCw, Clock, Download } from 'lucide-react';
+import { Plug, AlertCircle, CheckCircle2, XCircle, RefreshCw, Clock, Download, Link2 } from 'lucide-react';
 import { integrationsApi } from '@/lib/api/integrations';
 import { Card } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PullOrdersModal } from '@/components/integrations/PullOrdersModal';
+import { ShopeeMappingModal } from '@/components/integrations/ShopeeMappingModal';
 import type { StoreIntegration } from '@/types/integration';
 
 function getErrorMessage(error: unknown): string {
@@ -21,8 +22,9 @@ export function IntegrationsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   
-  // Pull Orders Modal state
+  // Modals state
   const [pullModalOpen, setPullModalOpen] = useState(false);
+  const [mappingModalOpen, setMappingModalOpen] = useState(false);
   const [selectedStore, setSelectedStore] = useState<{id: string, name: string} | null>(null);
 
   const { data: integrations, isLoading, error } = useQuery({
@@ -114,6 +116,11 @@ export function IntegrationsPage() {
     setPullModalOpen(true);
   };
 
+  const handleOpenMapping = (storeId: string, storeName: string) => {
+    setSelectedStore({ id: storeId, name: storeName });
+    setMappingModalOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -175,13 +182,22 @@ export function IntegrationsPage() {
               
               <div className="flex items-center gap-3">
                 {item.integration?.connection_status === 'connected' && item.marketplace === 'shopee' && (
-                  <button
-                    onClick={() => handlePullOrders(item.store_id, item.store_name)}
-                    className="px-3 py-1.5 text-sm font-medium text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-md flex items-center gap-1"
-                  >
-                    <Download className="w-4 h-4" />
-                    Pull Orders
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleOpenMapping(item.store_id, item.store_name)}
+                      className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-md flex items-center gap-1"
+                    >
+                      <Link2 className="w-4 h-4" />
+                      Mapping Candidates
+                    </button>
+                    <button
+                      onClick={() => handlePullOrders(item.store_id, item.store_name)}
+                      className="px-3 py-1.5 text-sm font-medium text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-md flex items-center gap-1"
+                    >
+                      <Download className="w-4 h-4" />
+                      Pull Orders
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => initiateMutation.mutate(item.store_id)}
@@ -242,6 +258,19 @@ export function IntegrationsPage() {
           isOpen={pullModalOpen}
           onClose={() => {
             setPullModalOpen(false);
+            setSelectedStore(null);
+            queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          }}
+        />
+      )}
+
+      {selectedStore && (
+        <ShopeeMappingModal
+          storeId={selectedStore.id}
+          storeName={selectedStore.name}
+          isOpen={mappingModalOpen}
+          onClose={() => {
+            setMappingModalOpen(false);
             setSelectedStore(null);
             queryClient.invalidateQueries({ queryKey: ['integrations'] });
           }}
