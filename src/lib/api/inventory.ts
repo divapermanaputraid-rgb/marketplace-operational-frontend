@@ -34,7 +34,7 @@ export const inventoryApi = {
     fetchApi<null>(`/api/inventory/${id}`, { method: 'DELETE' }),
 
   adjustStock: (id: string, data: AdjustStockRequest) =>
-    fetchApi<null>(`/api/inventory/${id}/movements`, { method: 'POST', body: JSON.stringify(data) }),
+    fetchApi<null>(`/api/inventory/${id}/adjust`, { method: 'POST', body: JSON.stringify(data) }),
 
   listMovements: (id: string) =>
     fetchApi<InventoryMovement[]>(`/api/inventory/${id}/movements`),
@@ -43,6 +43,6 @@ export const inventoryApi = {
     const searchParams = new URLSearchParams();
     if (params?.movement_type) searchParams.append('movement_type', params.movement_type);
     const qs = searchParams.toString();
-    return fetchApi<InventoryMovement[]>(`/api/inventory-movements${qs ? `?${qs}` : ''}`);
+    return fetchApi<InventoryMovement[]>(`/api/inventory/movements/all${qs ? `?${qs}` : ''}`);
   }
 };

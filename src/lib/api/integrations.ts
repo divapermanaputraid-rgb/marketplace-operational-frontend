@@ -11,37 +11,37 @@ import type {
 
 export const integrationsApi = {
   listIntegrations: () => {
-    return fetchApi<StoreIntegration[]>('/integrations');
+    return fetchApi<StoreIntegration[]>('/api/integrations');
   },
   
   getStoreIntegration: (storeId: string) => {
-    return fetchApi<CredentialResponse>(`/stores/${storeId}/integration`);
+    return fetchApi<CredentialResponse>(`/api/stores/${storeId}/integration`);
   },
 
   listSupportedMarketplaces: () => {
-    return fetchApi<SupportedMarketplace[]>('/integrations/marketplaces');
+    return fetchApi<SupportedMarketplace[]>('/api/integrations/marketplaces');
   },
 
   initiateStoreIntegration: (storeId: string) => {
-    return fetchApi<IntegrationInitiateResponse>(`/stores/${storeId}/integration/initiate`, {
+    return fetchApi<IntegrationInitiateResponse>(`/api/stores/${storeId}/integration/initiate`, {
       method: 'POST',
     });
   },
 
   testStoreIntegration: (storeId: string) => {
-    return fetchApi<IntegrationTestResponse>(`/stores/${storeId}/integration/test`, {
+    return fetchApi<IntegrationTestResponse>(`/api/stores/${storeId}/integration/test`, {
       method: 'POST',
     });
   },
 
   disconnectStoreIntegration: (storeId: string) => {
-    return fetchApi<{ message: string }>(`/stores/${storeId}/integration/disconnect`, {
+    return fetchApi<{ message: string }>(`/api/stores/${storeId}/integration/disconnect`, {
       method: 'POST',
     });
   },
 
   pullShopeeOrders: (storeId: string, params: PullOrdersRequest) => {
-    return fetchApi<PullOrdersResult>(`/stores/${storeId}/integration/orders/pull`, {
+    return fetchApi<PullOrdersResult>(`/api/stores/${storeId}/integration/orders/pull`, {
       method: 'POST',
       body: JSON.stringify(params),
     });
