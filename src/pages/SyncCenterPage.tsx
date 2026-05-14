@@ -61,6 +61,7 @@ const STATUS_COLORS: Record<string, string> = {
   not_configured: 'bg-orange-100 text-orange-800',
   disabled: 'bg-gray-200 text-gray-500',
   started: 'bg-blue-100 text-blue-800',
+  partial: 'bg-yellow-100 text-yellow-800',
 };
 
 export function SyncCenterPage() {

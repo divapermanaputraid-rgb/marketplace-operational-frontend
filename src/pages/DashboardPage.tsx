@@ -78,8 +78,8 @@ export function DashboardPage() {
   }
 
   const { stores, products, product_mappings, inventory, orders, sync } = summary;
+  const syncIssues = sync.not_configured + sync.failed + (sync.partial || 0);
 
-  const syncIssues = sync.not_configured + sync.failed;
 
   return (
     <div className="space-y-8">

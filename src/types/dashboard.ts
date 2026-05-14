@@ -43,6 +43,7 @@ export interface DashboardSummary {
     total_jobs: number;
     not_configured: number;
     failed: number;
+    partial: number;
     success: number;
     latest_logs: SyncLog[];
   };
