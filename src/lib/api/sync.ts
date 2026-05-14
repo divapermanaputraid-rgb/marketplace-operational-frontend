@@ -5,7 +5,8 @@ import type {
   CreateSyncJobRequest, 
   UpdateSyncJobRequest,
   SyncJobFilters,
-  SyncLogFilters
+  SyncLogFilters,
+  RunJobResult
 } from '@/types/sync';
 
 export const syncApi = {
@@ -33,7 +34,7 @@ export const syncApi = {
     fetchApi<null>(`/api/sync/jobs/${id}`, { method: 'DELETE' }),
 
   runJob: (id: string) =>
-    fetchApi<SyncJob>(`/api/sync/jobs/${id}/run`, { method: 'POST' }),
+    fetchApi<RunJobResult>(`/api/sync/jobs/${id}/run`, { method: 'POST' }),
 
   listLogs: (params?: SyncLogFilters) => {
     const searchParams = new URLSearchParams();

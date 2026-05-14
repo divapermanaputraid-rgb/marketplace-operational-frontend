@@ -131,13 +131,18 @@ function JobsView() {
 
   const runMutation = useMutation({
     mutationFn: syncApi.runJob,
-    onSuccess: (data: unknown) => {
-      // The API returns the job as data.data if unwrapped appropriately, 
-      // but in our fetchApi it returns the payload directly. We can access data.message if available.
-      // But fetchApi usually returns T. If the backend sends SuccessResponse(job, msg), fetchApi unwraps data.
-      // We will just invalidate to refresh.
-      const message = (data as { message?: string })?.message;
-      alert("Manual run triggered. Result: " + (message || "Marketplace API integration is not configured yet. Sync was skipped."));
+    onSuccess: (data) => {
+      const { status, records_processed, message, error } = data;
+      const details = status === 'success' || status === 'partial' 
+        ? `\nProcessed: ${records_processed}`
+        : '';
+      
+      if (status === 'failed' || error) {
+        alert(`Job failed: ${error || message}`);
+      } else {
+        alert(`Manual run completed: ${message}${details}`);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['sync-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['sync-logs'] });
     },
@@ -158,6 +163,19 @@ function JobsView() {
 
   return (
     <div className="space-y-4">
+      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <AlertTriangle className="h-5 w-5 text-blue-400" aria-hidden="true" />
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-blue-700">
+              Automation foundation is available, but jobs must be explicitly enabled and a background worker configured.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex justify-between items-center">
         <div className="flex gap-4">
           <div className="relative">
