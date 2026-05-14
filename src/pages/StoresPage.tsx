@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { storesApi } from '@/lib/api/stores';
 import type { Store, CreateStoreRequest, UpdateStoreRequest } from '@/types/store';
@@ -22,6 +23,7 @@ const CONNECTION_STATUSES = [
 ];
 
 export function StoresPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [marketplaceFilter, setMarketplaceFilter] = useState('');
@@ -178,9 +180,9 @@ export function StoresPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-3">
                         <button
-                          onClick={() => alert('Marketplace sync is not yet available in Sprint 3.')}
+                          onClick={() => navigate('/integrations')}
                           className="text-gray-400 hover:text-blue-600"
-                          title="Connect API"
+                          title="Manage Integration"
                         >
                           <Link2 className="h-4 w-4" />
                         </button>
