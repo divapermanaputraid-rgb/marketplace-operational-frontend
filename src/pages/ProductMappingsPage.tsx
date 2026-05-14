@@ -15,7 +15,7 @@ import type { PushStockResult } from '@/types/integration';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { Link2, Plus, Search, Filter, Edit2, Trash2, ExternalLink, ArrowUpCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Link2, Plus, Search, Filter, Edit2, Trash2, ExternalLink, ArrowUpCircle, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const LISTING_STATUSES: { value: ListingStatus; label: string; color: string }[] = [
   { value: 'draft', label: 'Draft', color: 'bg-gray-100 text-gray-800' },
@@ -586,54 +586,81 @@ function PushStockModal({ mapping, onClose }: { mapping: ProductMapping, onClose
               </div>
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Push Stock to Shopee
+                  Manual Stock Push to Shopee
                 </h3>
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-4">
+                  {/* Mapping Identity */}
                   <div className="p-3 bg-gray-50 rounded-md text-sm border border-gray-200">
-                    <div className="font-medium text-gray-700">{mapping.listing_name}</div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Marketplace Listing</div>
+                    <div className="font-medium text-gray-900">{mapping.listing_name}</div>
                     <div className="text-xs text-gray-500 font-mono mt-1">
-                      Marketplace ID: {mapping.external_product_id}
-                      {mapping.external_variant_id ? ` / ${mapping.external_variant_id}` : ''}
+                      ID: {mapping.external_product_id}
+                      {mapping.external_variant_id ? ` / VID: ${mapping.external_variant_id}` : ''}
                     </div>
+                    {mapping.external_sku && (
+                      <div className="text-xs text-gray-500 mt-0.5">SKU: {mapping.external_sku}</div>
+                    )}
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-100">
-                    <div className="text-sm text-blue-800">Available Internal Stock:</div>
-                    <div className="text-lg font-bold text-blue-900">
-                      {isLoadingInventory ? '...' : (inventoryItem?.available_quantity ?? 0)}
+                  {/* Quantity Source */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-blue-50 rounded-md border border-blue-100">
+                      <div className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Available Stock</div>
+                      <div className="text-xl font-bold text-blue-900 mt-1">
+                        {isLoadingInventory ? <Loader2 className="w-5 h-5 animate-spin" /> : (inventoryItem?.available_quantity ?? 0)}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-yellow-50 rounded-md border border-yellow-100">
+                      <div className="text-[10px] text-yellow-600 font-bold uppercase tracking-wider">Reserved Stock</div>
+                      <div className="text-xl font-bold text-yellow-900 mt-1">
+                        {isLoadingInventory ? <Loader2 className="w-5 h-5 animate-spin" /> : (inventoryItem?.reserved_quantity ?? 0)}
+                      </div>
                     </div>
                   </div>
 
                   {!result && (
-                    <p className="text-xs text-gray-500">
-                      This will push the current <strong>available quantity</strong> from the Main Warehouse to Shopee.
-                    </p>
+                    <div className="bg-amber-50 border-l-4 border-amber-400 p-3">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <AlertCircle className="h-4 w-4 text-amber-400" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-xs text-amber-700">
+                            <strong>Note:</strong> Reserved stock is NOT pushed. Only <strong>Available Stock</strong> will be sent to Shopee.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   {result && (
                     <div className={`p-4 rounded-md flex items-start gap-3 ${
-                      result.status === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                      result.status === 'success' ? 'bg-green-50 border border-green-200' : 
+                      result.status === 'dry_run' ? 'bg-blue-50 border border-blue-200' :
+                      'bg-red-50 border border-red-200'
                     }`}>
-                      {result.status === 'success' ? (
+                      {result.status === 'success' || result.status === 'dry_run' ? (
                         <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
                       ) : (
                         <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
                       )}
                       <div>
                         <div className={`text-sm font-medium ${
-                          result.status === 'success' ? 'text-green-800' : 'text-red-800'
+                          result.status === 'success' ? 'text-green-800' : 
+                          result.status === 'dry_run' ? 'text-blue-800' :
+                          'text-red-800'
                         }`}>
                           {result.message}
                         </div>
-                        {result.status === 'success' && (
-                          <div className="text-xs text-green-700 mt-1">
-                            Pushed Quantity: {result.pushed_quantity}
+                        {(result.status === 'success' || result.status === 'dry_run') && (
+                          <div className={`text-xs mt-1 ${result.status === 'success' ? 'text-green-700' : 'text-blue-700'}`}>
+                            Quantity {result.dry_run ? 'to be pushed' : 'pushed'}: <strong>{result.pushed_quantity}</strong>
                             {result.dry_run && <span className="ml-2 font-bold">(DRY RUN)</span>}
                           </div>
                         )}
                         {result.sync_log_id && (
-                          <div className="text-[10px] text-gray-500 mt-1">
-                            Sync Log ID: {result.sync_log_id}
+                          <div className="text-[10px] text-gray-500 mt-1 font-mono">
+                            Sync Log: {result.sync_log_id}
                           </div>
                         )}
                         {result.errors && result.errors.length > 0 && (
@@ -656,8 +683,8 @@ function PushStockModal({ mapping, onClose }: { mapping: ProductMapping, onClose
                         onChange={(e) => setDryRun(e.target.checked)}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="dryRun" className="text-sm text-gray-700">
-                        Dry run (validate only, do not push)
+                      <label htmlFor="dryRun" className="text-sm font-medium text-gray-700">
+                        Dry Run (Validate without updating marketplace)
                       </label>
                     </div>
                   )}
@@ -665,16 +692,23 @@ function PushStockModal({ mapping, onClose }: { mapping: ProductMapping, onClose
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t">
             {!result ? (
               <>
                 <button
                   type="button"
                   disabled={pushMutation.isPending || isLoadingInventory}
                   onClick={handlePush}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 ${
+                    dryRun ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'
+                  }`}
                 >
-                  {pushMutation.isPending ? 'Processing...' : (dryRun ? 'Validate Push' : 'Push Now')}
+                  {pushMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (dryRun ? 'Validate (Dry Run)' : 'Push Now')}
                 </button>
                 <button
                   type="button"

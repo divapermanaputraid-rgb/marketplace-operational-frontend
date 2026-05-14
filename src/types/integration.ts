@@ -126,7 +126,7 @@ export interface PushStockRequest {
 }
 
 export interface PushStockResult {
-  status: 'success' | 'failed' | 'expired' | 'not_configured';
+  status: 'success' | 'failed' | 'expired' | 'not_configured' | 'dry_run';
   message: string;
   marketplace: string;
   store_id: string;
