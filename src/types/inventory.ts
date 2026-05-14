@@ -7,6 +7,7 @@ export type MovementType =
   | 'reserved' 
   | 'reservation_released' 
   | 'sold' 
+  | 'confirm_sale' 
   | 'returned' 
   | 'damaged' 
   | 'manual_correction';

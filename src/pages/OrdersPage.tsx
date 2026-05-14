@@ -776,9 +776,30 @@ function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => 
       });
     }
   });
+  
+  const confirmMutation = useMutation({
+    mutationFn: () => ordersApi.confirmSale(orderId),
+    onSuccess: (result) => {
+      setActionResult(result);
+      queryClient.invalidateQueries({ queryKey: ['orders', orderId] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : 'Failed to confirm sale';
+      setActionResult({
+        status: 'error',
+        message: message,
+        records_processed: 0,
+        records_reserved: 0,
+        records_released: 0,
+        records_confirmed: 0,
+        records_skipped: 0,
+        errors: [message]
+      });
+    }
+  });
 
-
-  const isActionLoading = reserveMutation.isPending || releaseMutation.isPending;
+  const isActionLoading = reserveMutation.isPending || releaseMutation.isPending || confirmMutation.isPending;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-500 bg-opacity-75">
@@ -805,15 +826,24 @@ function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => 
                   "bg-red-50 border-red-200 text-red-800"
                 )}>
                   <div className="flex flex-col gap-1">
-                    <p className="font-bold text-sm uppercase tracking-tight">{actionResult.message}</p>
+                    <p className="font-bold text-sm uppercase tracking-tight">
+                      {actionResult.status === 'insufficient_stock' 
+                        ? "Insufficient available stock for one or more mapped items." 
+                        : actionResult.message}
+                    </p>
                     <div className="text-xs space-x-3">
                       <span>Processed: {actionResult.records_processed}</span>
                       {actionResult.records_reserved > 0 && <span className="font-medium">Reserved: {actionResult.records_reserved}</span>}
                       {actionResult.records_released > 0 && <span className="font-medium">Released: {actionResult.records_released}</span>}
+                      {actionResult.records_confirmed > 0 && <span className="font-medium text-blue-700">Confirmed: {actionResult.records_confirmed}</span>}
                       {actionResult.records_skipped > 0 && <span className="text-gray-600 italic">Skipped: {actionResult.records_skipped}</span>}
                     </div>
                     {actionResult.records_skipped > 0 && actionResult.status === 'success' && (
-                      <p className="text-[10px] mt-1 text-blue-600">Note: Some items were skipped (either already processed or not mapped to inventory).</p>
+                      <p className="text-[10px] mt-1 text-blue-600">
+                        {actionResult.records_processed === actionResult.records_skipped 
+                          ? "This order has already been processed for this inventory action."
+                          : "Some order items were skipped because they are not mapped to internal inventory."}
+                      </p>
                     )}
                     {actionResult.errors && actionResult.errors.length > 0 && (
                       <ul className="mt-2 list-disc list-inside text-[11px] text-red-600">
@@ -886,6 +916,17 @@ function ViewOrderModal({ orderId, onClose }: { orderId: string; onClose: () => 
                       className="inline-flex items-center px-3 py-1.5 border border-orange-300 text-xs font-medium rounded shadow-sm text-orange-700 bg-white hover:bg-orange-50 disabled:opacity-50"
                     >
                       {releaseMutation.isPending ? 'Releasing...' : 'Release Reservation'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm("Are you sure you want to confirm this sale? This will finalize the reserved stock as sold and cannot be undone.")) {
+                          confirmMutation.mutate();
+                        }
+                      }}
+                      disabled={isActionLoading}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {confirmMutation.isPending ? 'Confirming...' : 'Confirm Sale'}
                     </button>
                   </div>
                 </div>

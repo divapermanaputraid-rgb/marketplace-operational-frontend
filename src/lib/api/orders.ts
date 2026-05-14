@@ -39,5 +39,8 @@ export const ordersApi = {
 
   releaseReservation: (id: string) =>
     fetchApi<InventoryReservationResult>(`/api/orders/${id}/release-reservation`, { method: 'POST' }),
+
+  confirmSale: (id: string) =>
+    fetchApi<InventoryReservationResult>(`/api/orders/${id}/confirm-sale`, { method: 'POST' }),
 };
 
