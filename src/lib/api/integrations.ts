@@ -10,7 +10,9 @@ import type {
   MappingCandidatesRequest,
   MappingCandidatesResult,
   CreateShopeeMappingRequest,
-  CreateShopeeMappingResult
+  CreateShopeeMappingResult,
+  PushStockRequest,
+  PushStockResult
 } from '@/types/integration';
 
 export const integrationsApi = {
@@ -60,6 +62,13 @@ export const integrationsApi = {
 
   createShopeeProductMapping: (storeId: string, payload: CreateShopeeMappingRequest) => {
     return fetchApi<CreateShopeeMappingResult>(`/api/stores/${storeId}/integration/products/mappings`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  pushStock: (storeId: string, payload: PushStockRequest) => {
+    return fetchApi<PushStockResult>(`/api/stores/${storeId}/integration/stock/push`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });

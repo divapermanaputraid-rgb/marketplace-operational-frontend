@@ -113,3 +113,23 @@ export interface CreateShopeeMappingResult {
   external_sku?: string;
   listing_name?: string;
 }
+
+export interface PushStockRequest {
+  product_mapping_id: string;
+  quantity?: number;
+  dry_run?: boolean;
+}
+
+export interface PushStockResult {
+  status: 'success' | 'failed' | 'expired' | 'not_configured';
+  message: string;
+  marketplace: string;
+  store_id: string;
+  product_mapping_id: string;
+  external_product_id: string;
+  external_variant_id: string;
+  pushed_quantity: number;
+  dry_run: boolean;
+  sync_log_id: string;
+  errors?: string[];
+}
