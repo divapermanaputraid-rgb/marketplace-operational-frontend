@@ -181,10 +181,11 @@ export function StoresPage() {
                       <div className="flex items-center justify-end space-x-3">
                         <button
                           onClick={() => navigate('/integrations')}
-                          className="text-gray-400 hover:text-blue-600"
+                          className="inline-flex items-center text-blue-600 hover:text-blue-900 font-medium"
                           title="Manage Integration"
                         >
-                          <Link2 className="h-4 w-4" />
+                          <Link2 className="h-4 w-4 mr-1" />
+                          {store.connection_status === 'connected' ? 'Manage' : 'Connect'}
                         </button>
                         <button
                           onClick={() => { setEditingStore(store); setIsFormOpen(true); }}

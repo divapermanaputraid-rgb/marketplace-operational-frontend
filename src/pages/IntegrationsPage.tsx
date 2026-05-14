@@ -40,11 +40,16 @@ export function IntegrationsPage() {
   const initiateMutation = useMutation({
     mutationFn: (storeId: string) => integrationsApi.initiateStoreIntegration(storeId),
     onSuccess: (data) => {
+      setSuccessMsg(null);
       setErrorMsg(null);
       if (data.authorization_url) {
         window.location.href = data.authorization_url;
+      } else if (data.status === 'missing_credentials') {
+        setErrorMsg(data.message || 'Shopee API credentials are not configured on the backend yet.');
+      } else if (data.status === 'not_implemented') {
+        setErrorMsg(data.message || 'This marketplace integration is not implemented yet.');
       } else {
-        setSuccessMsg(data.message || 'Marketplace OAuth is not fully configured yet.');
+        setSuccessMsg(data.message || 'Marketplace integration initiated.');
       }
     },
     onError: (err: unknown) => {

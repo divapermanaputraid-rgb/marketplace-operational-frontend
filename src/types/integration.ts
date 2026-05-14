@@ -31,6 +31,7 @@ export interface SupportedMarketplace {
 
 export interface IntegrationInitiateResponse {
   message: string;
+  status?: string;
   authorization_url?: string;
 }
 
