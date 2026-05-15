@@ -8,16 +8,14 @@ import {
   ShoppingCart, 
   DollarSign, 
   RefreshCw,
-  Clock,
-  History,
   ArrowRight,
-  CheckCircle2,
-  XCircle
+  Zap,
+  Info,
+  ShieldAlert
 } from 'lucide-react';
 import { dashboardApi } from '@/lib/api/dashboard';
 import { Card, CardBody } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { cn } from '@/lib/utils/cn';
 
 interface MetricCardProps {
@@ -56,12 +54,17 @@ function MetricCard({ title, value, subtext, icon: Icon, colorClass, link }: Met
 }
 
 export function DashboardPage() {
-  const { data: summary, isLoading, error } = useQuery({
+  const { data: summary, isLoading: isSummaryLoading, error: summaryError } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: dashboardApi.getSummary,
   });
 
-  if (isLoading) {
+  const { data: shopeeOps, isLoading: isShopeeLoading } = useQuery({
+    queryKey: ['shopee-operations'],
+    queryFn: dashboardApi.getShopeeOperations,
+  });
+
+  if (isSummaryLoading) {
     return (
       <div className="p-12">
         <LoadingState text="Loading dashboard metrics..." />
@@ -69,7 +72,7 @@ export function DashboardPage() {
     );
   }
 
-  if (error || !summary) {
+  if (summaryError || !summary) {
     return (
       <div className="p-12 text-center text-red-500">
         Failed to load dashboard data. Please try again later.
@@ -80,20 +83,51 @@ export function DashboardPage() {
   const { stores, products, product_mappings, inventory, orders, sync } = summary;
   const syncIssues = sync.not_configured + sync.failed + (sync.partial || 0);
 
-
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500">Welcome to Marketplace Operations System.</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500">Welcome to Marketplace Operations System.</p>
+        </div>
+        <div className="bg-orange-50 text-orange-700 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 flex items-center gap-1">
+          <Zap className="h-3 w-3" />
+          Shopee Focus Active
+        </div>
       </div>
 
       {/* Operational Alerts */}
-      {(inventory.low_stock_count > 0 || product_mappings.unmapped_products > 0 || syncIssues > 0) && (
+      {(inventory.low_stock_count > 0 || product_mappings.unmapped_products > 0 || syncIssues > 0 || (shopeeOps?.alerts && shopeeOps.alerts.length > 0)) && (
         <div className="space-y-3">
           <h2 className="text-lg font-medium text-gray-900">Requires Attention</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {inventory.low_stock_count > 0 && (
+            {/* Shopee Specific Alerts */}
+            {shopeeOps?.alerts.map((alert, idx) => (
+              <div key={idx} className={cn(
+                "border-l-4 p-4 rounded-r-md flex justify-between items-center",
+                alert.severity === 'critical' ? "bg-red-50 border-red-400" : 
+                alert.severity === 'warning' ? "bg-amber-50 border-amber-400" : "bg-blue-50 border-blue-400"
+              )}>
+                <div className="flex items-center">
+                  {alert.severity === 'critical' ? <ShieldAlert className="h-5 w-5 text-red-400 mr-3" /> : 
+                   alert.severity === 'warning' ? <AlertTriangle className="h-5 w-5 text-amber-400 mr-3" /> : <Info className="h-5 w-5 text-blue-400 mr-3" />}
+                  <div>
+                    <p className={cn("text-sm font-bold", 
+                      alert.severity === 'critical' ? "text-red-800" : 
+                      alert.severity === 'warning' ? "text-amber-800" : "text-blue-800")}>{alert.title}</p>
+                    <p className={cn("text-xs", 
+                      alert.severity === 'critical' ? "text-red-700" : 
+                      alert.severity === 'warning' ? "text-amber-700" : "text-blue-700")}>{alert.message}</p>
+                  </div>
+                </div>
+                <Link to={alert.action_target} className={cn("text-sm font-medium", 
+                  alert.severity === 'critical' ? "text-red-800 hover:text-red-600" : 
+                  alert.severity === 'warning' ? "text-amber-800 hover:text-amber-600" : "text-blue-800 hover:text-blue-600")}>{alert.action_label}</Link>
+              </div>
+            ))}
+
+            {/* General Alerts */}
+            {inventory.low_stock_count > 0 && !shopeeOps?.alerts.find(a => a.type === 'low_stock') && (
               <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-md flex justify-between items-center">
                 <div className="flex items-center">
                   <AlertTriangle className="h-5 w-5 text-amber-400 mr-3" />
@@ -106,7 +140,7 @@ export function DashboardPage() {
               </div>
             )}
             
-            {product_mappings.unmapped_products > 0 && (
+            {product_mappings.unmapped_products > 0 && !shopeeOps?.alerts.find(a => a.type === 'unmapped_listings') && (
               <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-md flex justify-between items-center">
                 <div className="flex items-center">
                   <Link2 className="h-5 w-5 text-blue-400 mr-3" />
@@ -116,19 +150,6 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <Link to="/product-mappings" className="text-sm font-medium text-blue-800 hover:text-blue-600">Review</Link>
-              </div>
-            )}
-
-            {syncIssues > 0 && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-md flex justify-between items-center">
-                <div className="flex items-center">
-                  <RefreshCw className="h-5 w-5 text-red-400 mr-3" />
-                  <div>
-                    <p className="text-sm font-bold text-red-800">{syncIssues} Sync Issues</p>
-                    <p className="text-xs text-red-700">Jobs failed or not configured.</p>
-                  </div>
-                </div>
-                <Link to="/sync" className="text-sm font-medium text-red-800 hover:text-red-600">Review</Link>
               </div>
             )}
           </div>
@@ -172,6 +193,91 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Shopee Operations Section */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+              <Zap className="h-5 w-5 text-orange-500" />
+              Shopee Operations Control
+            </h2>
+          </div>
+          <Card>
+            {isShopeeLoading ? (
+              <div className="p-8"><LoadingState text="Loading Shopee operations..." /></div>
+            ) : !shopeeOps ? (
+              <div className="p-8 text-center text-gray-500">Shopee operations data unavailable.</div>
+            ) : (
+              <div className="p-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-8">
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-500 uppercase">Stores Connected</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{shopeeOps.metrics.connected_stores} / {shopeeOps.metrics.total_stores}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-500 uppercase">Sync Failures (24h)</p>
+                    <p className={cn("text-2xl font-bold mt-1", shopeeOps.metrics.failed_sync_count_24h > 0 ? "text-red-600" : "text-gray-900")}>
+                      {shopeeOps.metrics.failed_sync_count_24h}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-500 uppercase">Mapped Listings</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{shopeeOps.metrics.mapped_listing_count}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-gray-500 uppercase">Unmapped Listings</p>
+                    <p className={cn("text-2xl font-bold mt-1", shopeeOps.metrics.unmapped_listing_count > 0 ? "text-orange-600" : "text-gray-900")}>
+                      {shopeeOps.metrics.unmapped_listing_count}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 border-t pt-6">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Last Successful Syncs</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                      <ShoppingCart className="h-5 w-5 text-blue-500" />
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase">Orders Pull</p>
+                        <p className="text-xs font-medium text-gray-900">
+                          {shopeeOps.metrics.last_successful_order_sync ? 
+                            new Date(shopeeOps.metrics.last_successful_order_sync.created_at).toLocaleTimeString() : 'Never'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                      <Package className="h-5 w-5 text-indigo-500" />
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase">Product Refresh</p>
+                        <p className="text-xs font-medium text-gray-900">
+                          {shopeeOps.metrics.last_successful_product_sync ? 
+                            new Date(shopeeOps.metrics.last_successful_product_sync.created_at).toLocaleTimeString() : 'Never'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                      <RefreshCw className="h-5 w-5 text-green-500" />
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase">Stock Push</p>
+                        <p className="text-xs font-medium text-gray-900">
+                          {shopeeOps.metrics.last_successful_stock_push ? 
+                            new Date(shopeeOps.metrics.last_successful_stock_push.created_at).toLocaleTimeString() : 'Never'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex justify-center">
+                  <Link to="/reports" className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md text-sm font-medium text-blue-600 hover:bg-blue-50">
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    Open Reconciliation Report
+                  </Link>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+
         {/* Quick Links */}
         <div className="lg:col-span-1 space-y-4">
           <h2 className="text-lg font-medium text-gray-900">Quick Actions</h2>
@@ -210,55 +316,8 @@ export function DashboardPage() {
             </div>
           </Card>
         </div>
-
-        {/* Recent Sync Logs */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-medium text-gray-900">Recent Sync Activity</h2>
-            <Link to="/sync" className="text-sm text-blue-600 hover:text-blue-500 font-medium">View all logs</Link>
-          </div>
-          <Card>
-            {!sync.latest_logs?.length ? (
-              <EmptyState
-                icon={<History className="w-8 h-8" />}
-                title="No recent sync activity"
-                description="Sync jobs haven't been run yet."
-              />
-            ) : (
-              <div className="divide-y divide-gray-200">
-                {sync.latest_logs.map(log => (
-                  <div key={log.id} className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {log.status === 'success' ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      ) : log.status === 'failed' ? (
-                        <XCircle className="h-5 w-5 text-red-500" />
-                      ) : log.status === 'not_configured' ? (
-                        <AlertTriangle className="h-5 w-5 text-orange-500" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-gray-400" />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {log.sync_job?.job_name || 'Manual Sync'} 
-                          <span className="ml-2 text-xs font-normal text-gray-500 capitalize px-2 py-0.5 bg-gray-100 rounded-full">
-                            {log.sync_type}
-                          </span>
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1 flex items-center">
-                          {log.message || log.error_message || log.status}
-                          <span className="mx-2">&bull;</span>
-                          {new Date(log.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
       </div>
     </div>
   );
 }
+

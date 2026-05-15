@@ -34,3 +34,17 @@ export interface SyncReport {
   sync_log_status_counts: Record<string, number>;
   latest_logs: SyncLog[];
 }
+
+export interface ShopeeReconciliationRow {
+  product_mapping_id: string;
+  store_id: string;
+  external_product_id: string;
+  external_variant_id: string;
+  internal_product_name: string;
+  internal_available_quantity: number;
+  last_known_marketplace_stock: number;
+  difference: number;
+  severity: 'ok' | 'warning' | 'critical' | 'info' | 'unknown';
+  recommendation: string;
+}
+

@@ -3,7 +3,8 @@ import type {
   OrdersReport, 
   InventoryReport, 
   ProductsReport, 
-  SyncReport 
+  SyncReport,
+  ShopeeReconciliationRow
 } from '@/types/reports';
 
 export const reportsApi = {
@@ -11,4 +12,5 @@ export const reportsApi = {
   getInventory: () => fetchApi<InventoryReport>('/api/reports/inventory'),
   getProducts: () => fetchApi<ProductsReport>('/api/reports/products'),
   getSync: () => fetchApi<SyncReport>('/api/reports/sync'),
+  getShopeeReconciliation: () => fetchApi<ShopeeReconciliationRow[]>('/api/reports/shopee/reconciliation'),
 };

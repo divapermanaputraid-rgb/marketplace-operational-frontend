@@ -48,3 +48,29 @@ export interface DashboardSummary {
     latest_logs: SyncLog[];
   };
 }
+
+export interface ShopeeAlert {
+  type: string;
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  message: string;
+  action_label: string;
+  action_target: string;
+}
+
+export interface ShopeeOperationsSummary {
+  metrics: {
+    total_stores: number;
+    connected_stores: number;
+    expired_credentials_count: number;
+    failed_sync_count_24h: number;
+    partial_sync_count_24h: number;
+    last_successful_order_sync: SyncLog | null;
+    last_successful_product_sync: SyncLog | null;
+    last_successful_stock_push: SyncLog | null;
+    mapped_listing_count: number;
+    unmapped_listing_count: number;
+  };
+  alerts: ShopeeAlert[];
+}
+

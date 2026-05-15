@@ -3,11 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { reportsApi } from '@/lib/api/reports';
 import { Card } from '@/components/ui/Card';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { ShoppingCart, Package, AlertTriangle, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Package, AlertTriangle, RefreshCw, Zap, ShieldAlert, CheckCircle2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 export function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'products' | 'sync'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'products' | 'sync' | 'shopee_recon'>('orders');
 
   return (
     <div className="space-y-6">
@@ -16,8 +16,8 @@ export function ReportsPage() {
         <p className="text-sm text-gray-500 mt-1">Operational reporting and analytics.</p>
       </div>
 
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="-mb-px flex space-x-8 min-w-max">
           <button
             onClick={() => setActiveTab('orders')}
             className={cn(
@@ -66,6 +66,18 @@ export function ReportsPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Sync Health
           </button>
+          <button
+            onClick={() => setActiveTab('shopee_recon')}
+            className={cn(
+              "whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center",
+              activeTab === 'shopee_recon' 
+                ? "border-orange-500 text-orange-600" 
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            )}
+          >
+            <Zap className="mr-2 h-4 w-4" />
+            Shopee Reconciliation
+          </button>
         </nav>
       </div>
 
@@ -74,6 +86,7 @@ export function ReportsPage() {
         {activeTab === 'inventory' && <InventoryReport />}
         {activeTab === 'products' && <ProductsReport />}
         {activeTab === 'sync' && <SyncReport />}
+        {activeTab === 'shopee_recon' && <ShopeeReconciliationReport />}
       </div>
     </div>
   );
@@ -137,6 +150,112 @@ function OrdersReport() {
     </div>
   );
 }
+
+function ShopeeReconciliationReport() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['reports-shopee-recon'],
+    queryFn: reportsApi.getShopeeReconciliation,
+  });
+
+  if (isLoading) return <LoadingState text="Calculating stock discrepancies..." />;
+  if (error || !data) return <div className="text-red-500">Failed to load reconciliation report.</div>;
+
+  const criticalIssues = data.filter(r => r.severity === 'critical').length;
+  const warningIssues = data.filter(r => r.severity === 'warning').length;
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-md">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <Info className="h-5 w-5 text-orange-400" aria-hidden="true" />
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-orange-800">About Reconciliation</h3>
+            <div className="mt-2 text-xs text-orange-700 space-y-1">
+              <p>• Comparison is between <strong>Internal Available Stock</strong> and <strong>Latest Pulled Marketplace Stock</strong>.</p>
+              <p>• Differences only appear if a Product Pull job was recently successful.</p>
+              <p>• <strong>Automatic corrections are disabled</strong>. Use "Run Stock Push" manually for specific items if needed.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <p className="text-sm text-gray-500">Mapped Listings Checked</p>
+          <p className="text-2xl font-bold text-gray-900">{data.length}</p>
+        </Card>
+        <Card className="p-4 border-red-200 bg-red-50">
+          <p className="text-sm text-red-600">Overselling Risk (Critical)</p>
+          <p className="text-2xl font-bold text-red-600">{criticalIssues}</p>
+        </Card>
+        <Card className="p-4 border-amber-200 bg-amber-50">
+          <p className="text-sm text-amber-600">Stock Mismatches (Warning)</p>
+          <p className="text-2xl font-bold text-amber-600">{warningIssues}</p>
+        </Card>
+      </div>
+
+      <Card>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product (Internal)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Marketplace ID</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Internal</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Marketplace</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Diff</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 font-mono text-xs">
+              {data.map((row) => (
+                <tr key={row.product_mapping_id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900">{row.internal_product_name}</div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-500">
+                    {row.external_product_id}
+                    {row.external_variant_id && ` / ${row.external_variant_id}`}
+                  </td>
+                  <td className="px-6 py-4 text-right font-bold text-blue-600">
+                    {row.internal_available_quantity}
+                  </td>
+                  <td className="px-6 py-4 text-right text-gray-900">
+                    {row.last_known_marketplace_stock}
+                  </td>
+                  <td className={cn("px-6 py-4 text-right font-bold", 
+                    row.difference === 0 ? "text-gray-400" : 
+                    row.difference < 0 ? "text-red-600" : "text-green-600"
+                  )}>
+                    {row.difference > 0 ? `+${row.difference}` : row.difference}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                      row.severity === 'ok' ? "bg-green-100 text-green-800" :
+                      row.severity === 'critical' ? "bg-red-100 text-red-800" :
+                      row.severity === 'warning' ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-800"
+                    )}>
+                      {row.severity === 'ok' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                      {row.severity === 'critical' && <ShieldAlert className="h-3 w-3 mr-1" />}
+                      {row.severity === 'warning' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                      {row.severity}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {data.length === 0 && (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500 font-sans">No mapped Shopee listings found to reconcile.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 
 function InventoryReport() {
   const { data, isLoading, error } = useQuery({
