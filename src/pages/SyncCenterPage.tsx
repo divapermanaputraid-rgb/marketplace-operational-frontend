@@ -8,7 +8,8 @@ import type {
   UpdateSyncJobRequest,
   SyncMarketplace,
   SyncType,
-  SyncDirection
+  SyncDirection,
+  RunJobResult
 } from '@/types/sync';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -25,7 +26,10 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Store as StoreIcon
+  Store as StoreIcon,
+  Settings,
+  Info,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -62,6 +66,7 @@ const STATUS_COLORS: Record<string, string> = {
   disabled: 'bg-gray-200 text-gray-500',
   started: 'bg-blue-100 text-blue-800',
   partial: 'bg-yellow-100 text-yellow-800',
+  dry_run: 'bg-indigo-100 text-indigo-800',
 };
 
 export function SyncCenterPage() {
@@ -73,6 +78,10 @@ export function SyncCenterPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Sync Center</h1>
           <p className="text-sm text-gray-500 mt-1">Manage and monitor marketplace integrations and automated tasks.</p>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-[11px] font-medium text-gray-600 border border-gray-200">
+          <div className="h-2 w-2 rounded-full bg-gray-400"></div>
+          Worker Status: <span className="text-gray-900 uppercase">Disabled by default</span>
         </div>
       </div>
 
@@ -116,6 +125,7 @@ function JobsView() {
   const [typeFilter, setTypeFilter] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<SyncJob | null>(null);
+  const [runResult, setRunResult] = useState<RunJobResult | null>(null);
 
   const { data: jobs, isLoading, error } = useQuery({
     queryKey: ['sync-jobs', marketplaceFilter, typeFilter],
@@ -133,17 +143,7 @@ function JobsView() {
   const runMutation = useMutation({
     mutationFn: syncApi.runJob,
     onSuccess: (data) => {
-      const { status, records_processed, message, error } = data;
-      const details = status === 'success' || status === 'partial' 
-        ? `\nProcessed: ${records_processed}`
-        : '';
-      
-      if (status === 'failed' || error) {
-        alert(`Job failed: ${error || message}`);
-      } else {
-        alert(`Manual run completed: ${message}${details}`);
-      }
-      
+      setRunResult(data);
       queryClient.invalidateQueries({ queryKey: ['sync-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['sync-logs'] });
     },
@@ -159,23 +159,54 @@ function JobsView() {
   };
 
   const handleRun = (id: string) => {
+    setRunResult(null);
     runMutation.mutate(id);
   };
 
   return (
     <div className="space-y-4">
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+      <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6">
         <div className="flex">
           <div className="flex-shrink-0">
-            <AlertTriangle className="h-5 w-5 text-blue-400" aria-hidden="true" />
+            <Info className="h-5 w-5 text-amber-400" aria-hidden="true" />
           </div>
           <div className="ml-3">
-            <p className="text-sm text-blue-700">
-              Automation foundation is available, but jobs must be explicitly enabled and a background worker configured.
-            </p>
+            <h3 className="text-sm font-medium text-amber-800">Controlled Automation Active</h3>
+            <div className="mt-2 text-sm text-amber-700 space-y-1">
+              <p>• Background worker is <strong>disabled by default</strong> for safety.</p>
+              <p>• Scheduled automation only runs for explicitly enabled and configured jobs.</p>
+              <p>• <strong>Bulk stock push is disabled</strong>. Stock push jobs require a specific mapped listing ID.</p>
+            </div>
           </div>
         </div>
       </div>
+
+      {runResult && (
+        <div className={cn("p-4 rounded-md mb-6 border flex items-start gap-4", 
+          runResult.status === 'success' ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")}>
+          {runResult.status === 'success' ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <AlertTriangle className="h-5 w-5 text-red-500" />}
+          <div className="flex-1">
+            <h4 className={cn("text-sm font-bold", runResult.status === 'success' ? "text-green-800" : "text-red-800")}>
+              Manual Run Result: {runResult.job_name}
+            </h4>
+            <div className="mt-1 text-xs text-gray-700 grid grid-cols-2 sm:grid-cols-4 gap-4 py-2 border-y border-gray-100 my-2">
+              <div>Processed: <strong>{runResult.records_processed}</strong></div>
+              <div className="text-green-600">Created: <strong>{runResult.records_created}</strong></div>
+              <div className="text-blue-600">Updated: <strong>{runResult.records_updated}</strong></div>
+              <div className="text-red-600">Failed: <strong>{runResult.records_failed}</strong></div>
+            </div>
+            {runResult.errors && runResult.errors.length > 0 && (
+              <div className="text-[10px] text-red-600 font-mono mt-1">
+                Error: {runResult.errors[0]}
+              </div>
+            )}
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[10px] text-gray-500">Log ID: {runResult.sync_log_id}</span>
+              <button onClick={() => setRunResult(null)} className="text-xs font-medium text-gray-600 hover:text-gray-900 underline">Dismiss</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-between items-center">
         <div className="flex gap-4">
@@ -272,6 +303,7 @@ function JobsView() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium", STATUS_COLORS[job.status] || STATUS_COLORS.idle)}>
+                        {job.status === 'running' && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
                         {job.status.replace('_', ' ').toUpperCase()}
                       </span>
                       {job.last_error && (
@@ -297,11 +329,11 @@ function JobsView() {
                       <div className="flex items-center justify-end space-x-3">
                         <button
                           onClick={() => handleRun(job.id)}
-                          disabled={runMutation.isPending || !job.is_active}
+                          disabled={runMutation.isPending || !job.is_active || job.status === 'running'}
                           className="text-gray-400 hover:text-green-600 disabled:opacity-30 disabled:hover:text-gray-400"
                           title="Run Now"
                         >
-                          <Play className="h-4 w-4" />
+                          {runMutation.isPending && runMutation.variables === job.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                         </button>
                         <button
                           onClick={() => setEditingJob(job)}
@@ -327,8 +359,8 @@ function JobsView() {
         )}
       </Card>
 
-      {isCreateOpen && <CreateJobModal onClose={() => setIsCreateOpen(false)} />}
-      {editingJob && <EditJobModal job={editingJob} onClose={() => setEditingJob(null)} />}
+      {isCreateOpen && <JobFormModal onClose={() => setIsCreateOpen(false)} />}
+      {editingJob && <JobFormModal job={editingJob} onClose={() => setEditingJob(null)} />}
     </div>
   );
 }
@@ -378,11 +410,9 @@ function LogsView() {
             className="form-select block w-40 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           >
             <option value="">All Statuses</option>
-            <option value="success">Success</option>
-            <option value="failed">Failed</option>
-            <option value="partial">Partial</option>
-            <option value="expired">Expired</option>
-            <option value="not_configured">Not Configured</option>
+            {Object.keys(STATUS_COLORS).map(s => (
+              <option key={s} value={s}>{s.replace('_', ' ').toUpperCase()}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -429,8 +459,8 @@ function LogsView() {
                       {log.records_processed} / <span className="text-green-600">{log.records_created}</span> / <span className="text-blue-600">{log.records_updated}</span> / <span className="text-red-600">{log.records_failed}</span>
                     </div>
                     {log.raw_summary && (
-                      <div className="text-[10px] text-gray-400 mt-1 italic">
-                        {log.records_failed > 0 && "Failures detected"}
+                      <div className="text-[10px] text-gray-400 mt-1 italic font-mono truncate max-w-[200px]" title={log.raw_summary}>
+                        {log.raw_summary}
                       </div>
                     )}
                   </td>
@@ -450,22 +480,38 @@ function LogsView() {
   );
 }
 
-function CreateJobModal({ onClose }: { onClose: () => void }) {
+function JobFormModal({ job, onClose }: { job?: SyncJob, onClose: () => void }) {
   const queryClient = useQueryClient();
+  const isEditing = !!job;
   const { data: stores } = useQuery({ queryKey: ['stores'], queryFn: () => storesApi.list() });
 
-  const [formData, setFormData] = useState<CreateSyncJobRequest>({
-    job_name: '',
-    marketplace: 'all',
-    sync_type: 'orders',
-    sync_direction: 'pull',
-    is_active: true,
-    schedule_enabled: false,
-    schedule_interval_minutes: 60,
-  });
+  const [formData, setFormData] = useState<CreateSyncJobRequest & UpdateSyncJobRequest>(
+    job ? {
+      job_name: job.job_name,
+      is_active: job.is_active,
+      schedule_enabled: job.schedule_enabled,
+      schedule_interval_minutes: job.schedule_interval_minutes || 60,
+      marketplace: job.marketplace,
+      sync_type: job.sync_type,
+      sync_direction: job.sync_direction,
+      config: job.config || '',
+    } : {
+      job_name: '',
+      marketplace: 'shopee',
+      sync_type: 'orders',
+      sync_direction: 'pull',
+      is_active: true,
+      schedule_enabled: false,
+      schedule_interval_minutes: 60,
+      config: '',
+    }
+  );
 
   const mutation = useMutation({
-    mutationFn: syncApi.createJob,
+    mutationFn: (data: CreateSyncJobRequest | UpdateSyncJobRequest) => {
+      if (isEditing) return syncApi.updateJob(job.id, data);
+      return syncApi.createJob(data as CreateSyncJobRequest);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sync-jobs'] });
       onClose();
@@ -477,20 +523,23 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
     setFormData({
       ...formData,
       store_id: storeId,
-      marketplace: store ? (store.marketplace as SyncMarketplace) : 'all'
+      marketplace: store ? (store.marketplace as SyncMarketplace) : 'shopee'
     });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-500 bg-opacity-75">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-500 bg-opacity-75 overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(formData); }}>
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Create Sync Job</h3>
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 className="text-lg font-bold text-gray-900">{isEditing ? 'Edit Sync Job' : 'Create Sync Job'}</h3>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-500">
+              <XCircle className="h-5 w-5" />
+            </button>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Job Name</label>
+              <label className="block text-sm font-semibold text-gray-700">Job Name</label>
               <input
                 type="text"
                 required
@@ -501,42 +550,31 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Store Context (Optional)</label>
-              <select
-                value={formData.store_id || ''}
-                onChange={(e) => handleStoreChange(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-              >
-                <option value="">Global / All Stores</option>
-                {stores?.map(s => (
-                  <option key={s.id} value={s.id}>{s.store_name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Marketplace Target</label>
-              <select
-                value={formData.marketplace}
-                onChange={(e) => setFormData({...formData, marketplace: e.target.value as SyncMarketplace})}
-                disabled={!!formData.store_id}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100"
-              >
-                {MARKETPLACES.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-              {formData.store_id && <p className="text-xs text-gray-500 mt-1">Locked to store's marketplace.</p>}
-            </div>
+            {!isEditing && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Store Context</label>
+                <select
+                  required
+                  value={formData.store_id || ''}
+                  onChange={(e) => handleStoreChange(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="">Select a store...</option>
+                  {stores?.map(s => (
+                    <option key={s.id} value={s.id}>{s.store_name} ({s.marketplace})</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Sync Direction</label>
+                <label className="block text-sm font-semibold text-gray-700">Sync Direction</label>
                 <select
+                  disabled={isEditing}
                   value={formData.sync_direction}
                   onChange={(e) => setFormData({...formData, sync_direction: e.target.value as SyncDirection})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100"
                 >
                   {SYNC_DIRECTIONS.map(d => (
                     <option key={d.value} value={d.value}>{d.label}</option>
@@ -544,11 +582,12 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Data Type</label>
+                <label className="block text-sm font-semibold text-gray-700">Data Type</label>
                 <select
+                  disabled={isEditing}
                   value={formData.sync_type}
                   onChange={(e) => setFormData({...formData, sync_type: e.target.value as SyncType})}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100"
                 >
                   {SYNC_TYPES.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
@@ -557,105 +596,42 @@ function CreateJobModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-200">
-              <label className="flex items-center mb-4">
-                <input
-                  type="checkbox"
-                  checked={formData.schedule_enabled}
-                  onChange={(e) => setFormData({...formData, schedule_enabled: e.target.checked})}
-                  className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 h-4 w-4"
-                />
-                <span className="ml-2 text-sm text-gray-700">Enable Automated Schedule</span>
-              </label>
-
-              {formData.schedule_enabled && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Interval (Minutes)</label>
-                  <input
-                    type="number"
-                    min="5"
-                    required={formData.schedule_enabled}
-                    value={formData.schedule_interval_minutes}
-                    onChange={(e) => setFormData({...formData, schedule_interval_minutes: parseInt(e.target.value) || 60})}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                  />
-                  <p className="text-xs text-amber-600 mt-1 italic">Note: Scheduling is currently a metadata feature and does not trigger real background tasks yet.</p>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-lg">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            >
-              Save Job
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function EditJobModal({ job, onClose }: { job: SyncJob; onClose: () => void }) {
-  const queryClient = useQueryClient();
-
-  const [formData, setFormData] = useState<UpdateSyncJobRequest>({
-    job_name: job.job_name,
-    is_active: job.is_active,
-    schedule_enabled: job.schedule_enabled,
-    schedule_interval_minutes: job.schedule_interval_minutes || 60,
-  });
-
-  const mutation = useMutation({
-    mutationFn: (data: UpdateSyncJobRequest) => syncApi.updateJob(job.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sync-jobs'] });
-      onClose();
-    }
-  });
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-500 bg-opacity-75">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(formData); }}>
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Edit Sync Job</h3>
-            <p className="text-xs text-gray-500 font-mono mt-1">{job.marketplace} &bull; {job.sync_direction} &bull; {job.sync_type}</p>
-          </div>
-          <div className="p-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Job Name</label>
-              <input
-                type="text"
-                required
-                value={formData.job_name}
-                onChange={(e) => setFormData({...formData, job_name: e.target.value})}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              <div className="flex items-center gap-2 mb-1">
+                <Settings className="h-4 w-4 text-gray-400" />
+                <label className="block text-sm font-semibold text-gray-700">Job Config (JSON)</label>
+              </div>
+              <textarea
+                rows={4}
+                value={formData.config}
+                onChange={(e) => setFormData({...formData, config: e.target.value})}
+                placeholder='{"lookback_minutes": 60, "page_size": 50}'
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm font-mono"
               />
+              <div className="mt-2 space-y-1">
+                {formData.sync_type === 'stock' && (
+                  <p className="text-[10px] text-amber-600 italic font-medium">
+                    * Required for stock push: {"{\"product_mapping_id\": \"uuid\"}"}
+                  </p>
+                )}
+                <p className="text-[10px] text-gray-500">
+                  Params: lookback_minutes, page_size, order_status, product_mapping_id, dry_run
+                </p>
+              </div>
             </div>
-            
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 h-4 w-4"
-              />
-              <span className="ml-2 text-sm font-medium text-gray-900">Job Active</span>
-            </label>
 
-            <div className="pt-4 border-t border-gray-200">
-              <label className="flex items-center mb-4">
+            <div className="pt-4 border-t border-gray-200 space-y-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                  className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 h-4 w-4"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-900">Job Active</span>
+              </label>
+
+              <label className="flex items-center">
                 <input
                   type="checkbox"
                   checked={formData.schedule_enabled}
@@ -666,7 +642,7 @@ function EditJobModal({ job, onClose }: { job: SyncJob; onClose: () => void }) {
               </label>
 
               {formData.schedule_enabled && (
-                <div>
+                <div className="pl-6">
                   <label className="block text-sm font-medium text-gray-700">Interval (Minutes)</label>
                   <input
                     type="number"
@@ -680,7 +656,7 @@ function EditJobModal({ job, onClose }: { job: SyncJob; onClose: () => void }) {
               )}
             </div>
           </div>
-          <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-lg">
+          <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-lg border-t">
             <button
               type="button"
               onClick={onClose}
@@ -693,7 +669,7 @@ function EditJobModal({ job, onClose }: { job: SyncJob; onClose: () => void }) {
               disabled={mutation.isPending}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
-              Save Changes
+              {mutation.isPending ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Job')}
             </button>
           </div>
         </form>

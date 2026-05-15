@@ -4,7 +4,7 @@ export type SyncMarketplace = 'shopee' | 'tokopedia_shop' | 'tiktok_shop' | 'all
 export type SyncType = 'orders' | 'products' | 'inventory' | 'stock' | 'all';
 export type SyncDirection = 'pull' | 'push' | 'bidirectional' | 'internal';
 export type SyncJobStatus = 'idle' | 'running' | 'success' | 'failed' | 'skipped' | 'not_configured' | 'disabled' | 'expired' | 'not_implemented' | 'partial';
-export type SyncLogStatus = 'started' | 'success' | 'failed' | 'skipped' | 'not_configured' | 'expired' | 'not_implemented' | 'partial';
+export type SyncLogStatus = 'started' | 'success' | 'failed' | 'skipped' | 'not_configured' | 'expired' | 'not_implemented' | 'partial' | 'dry_run';
 
 
 export interface SyncJob {
@@ -22,6 +22,7 @@ export interface SyncJob {
   next_run_at?: string;
   last_success_at?: string;
   last_error?: string;
+  config?: string;
   created_at: string;
   updated_at: string;
 
@@ -61,6 +62,7 @@ export interface CreateSyncJobRequest {
   is_active?: boolean;
   schedule_enabled?: boolean;
   schedule_interval_minutes?: number;
+  config?: string;
 }
 
 export interface UpdateSyncJobRequest {
@@ -69,6 +71,7 @@ export interface UpdateSyncJobRequest {
   is_active?: boolean;
   schedule_enabled?: boolean;
   schedule_interval_minutes?: number;
+  config?: string;
 }
 
 export interface SyncJobFilters {
@@ -89,13 +92,16 @@ export interface SyncLogFilters {
 }
 
 export interface RunJobResult {
-  job: SyncJob;
+  job_id: string;
+  job_name: string;
   sync_log_id: string;
   status: SyncLogStatus;
   records_processed: number;
   records_created: number;
   records_updated: number;
   records_failed: number;
+  started_at?: string;
+  finished_at?: string;
   message?: string;
-  error?: string;
+  errors?: string[];
 }
